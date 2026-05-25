@@ -1,6 +1,6 @@
 
 use {
-    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas, prelude::Pubkey},
     litesvm::LiteSVM,
     solana_message::{Message, VersionedMessage},
     solana_signer::Signer,
@@ -16,11 +16,22 @@ fn test_initialize() {
     let bytes = include_bytes!("../../../target/deploy/vault.so");
     svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+
+    // Deriving vault pda
+    let (vault_pda, _bump) = Pubkey::find_program_address(
+        &[b"vault", payer.pubkey().as_ref()],
+        &program_id
+    );
     
+    // Constructing instruction
     let instruction = Instruction::new_with_bytes(
         program_id,
         &vault::instruction::Initialize {}.data(),
-        vault::accounts::Initialize {}.to_account_metas(None),
+        vault::accounts::Initialize {
+            user: payer.pubkey(),
+            my_account: vault_pda,
+            system_program: anchor_lang::solana_program::system_program::id()
+        }.to_account_metas(None),
     );
 
     let blockhash = svm.latest_blockhash();
