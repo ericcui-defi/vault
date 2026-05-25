@@ -18,6 +18,9 @@ pub struct Initialize<'info> {
 }
 
 pub fn handler(ctx: Context<Initialize>) -> Result<()> {
-    msg!("Greetings from: {:?}", ctx.program_id);
+    let my_account = &mut ctx.accounts.my_account;
+    my_account.authority = ctx.accounts.user.key();
+    my_account.bump = ctx.bumps.my_account;
+    my_account.total_deposited = 0;
     Ok(())
 }
