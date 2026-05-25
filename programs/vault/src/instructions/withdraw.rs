@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program;
 use crate::state::VaultState;
 
 #[derive(Accounts)]
@@ -18,19 +17,14 @@ pub struct Withdraw<'info> {
 }
 
 pub fn handler(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-    let bump = ctx.bumps.vault;
-    let seeds: &[&[u8]] = &[b"vault", ctx.accounts.authority.key.as_ref(), &[bump]];
-    let signer_seeds = &[seeds];
-    let cpi_context = CpiContext::new_with_signer(
-        ctx.accounts.system_program.key(),
-        system_program::Transfer{
-            from: ctx.accounts.vault.to_account_info(),
-            to: ctx.accounts.authority.to_account_info(),
-        },
-        signer_seeds,
-    );
-    system_program::transfer(cpi_context, amount)?;
-    let vault = &mut ctx.accounts.vault;
-    vault.total_deposited -= amount;
+
+    // Decrease vault lamports
+    let vault_account = ctx.accounts.vault.to_account_info();
+    **vault_account.try_borrow_mut_lamports()? -= amount;
+
+    // Increase authority lamports
+    let authority_account = ctx.accounts.authority.to_account_info();
+    **authority_account.try_borrow_mut_lamports()? += amount;
+
     Ok(())
 }
